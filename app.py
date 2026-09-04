@@ -85,9 +85,9 @@ st.subheader("📝 إدخال البيانات المالية الحالية ل�
 col1, col2 = st.columns(2)
 
 with col1:
-    amount_input = st.number_input("إجمالي الرسوم الدراسية المقررة لهذا الترم ($)", min_value=100, max_value=20000, value=3000, step=100)
-    # قمنا بإلغاء القيد الديناميكي هنا لمنع تعليق شاشة الجوال أثناء الكتابة
-    paid_input = st.number_input("المبلغ الذي سدده الطالب حتى الآن ($)", min_value=0, max_value=20000, value=1200, step=50)
+    # تم إزالة الحد الأقصى (max_value) لتتمكن من كتابة أي رقم تريده بحرية
+    amount_input = st.number_input("إجمالي الرسوم الدراسية المقررة لهذا الترم", min_value=0, value=3000, step=100)
+    paid_input = st.number_input("المبلغ الذي سدده الطالب حتى الآن", min_value=0, value=1200, step=50)
 
 with col2:
     prev_delays_input = st.slider("عدد مرات تأخر الطالب في سداد الأقساط السابقة", min_value=0, max_value=5, value=1)
@@ -101,8 +101,8 @@ if st.button("تحليل حالة الطالب وتوقع النتيجة 🔍", 
     if paid_input > amount_input:
         st.error("❌ خطأ: لا يمكن أن يكون المبلغ المسدد أكبر من إجمالي الرسوم الدراسية المقررة للطالب! يرجى مراجعة الأرقام المدخلة.")
     else:
-        # 1. حساب الميزات الإضافية المدخلة
-        p_ratio = paid_input / amount_input
+        # حماية من القسمة على صفر في حال أدخل المستخدم 0 في إجمالي الرسوم
+        p_ratio = paid_input / amount_input if amount_input > 0 else 0
         rem_amount = amount_input - paid_input
         
         # 2. تجهيز البيانات كـ DataFrame لتطابق ميزات التدريب
