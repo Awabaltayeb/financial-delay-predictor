@@ -6,31 +6,31 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-# ضبط إعدادات الصفحة لتكون بالاتجاه العربي ومظهر أنيق
+# ضبط إعدادات الصفحة لتكون بالاتجاه العربي ومظهر أنيق مخصص للكلية
 st.set_page_config(
-    page_title="مساعد التنبؤ بالمتأخرات المالية",
-    page_icon="📊",
+    page_title="نظام التنبؤ بمتأخرات رسوم الطلاب",
+    page_icon="🎓",
     layout="centered"
 )
 
-# 1. دالة لتوليد بيانات اصطناعية منطقية وتدريب النموذج (يتم تشغيلها مرة واحدة وتخزينها في الذاكرة المؤقتة)
+# 1. دالة لتوليد بيانات اصطناعية منطقية وتدريب النموذج
 @st.cache_resource
 def setup_model_and_data():
-    # توليد بيانات اصطناعية (200 عميل) بناءً على قواعد منطقية لضمان تدريب ناجح للنموذج
+    # توليد بيانات اصطناعية (200 طالب) بناءً على سلوك سداد الرسوم الدراسية
     np.random.seed(42)
     n_samples = 200
     
-    amount = np.random.randint(1000, 5000, n_samples)
+    # الرسوم الدراسية تتراوح عادة بين 1500 و 6000 وحدة نقدية
+    amount = np.random.randint(1500, 6000, n_samples)
     paid = np.array([np.random.randint(0, int(a)) for a in amount])
-    previous_delays = np.random.randint(0, 6, n_samples)
+    previous_delays = np.random.randint(0, 6, n_samples) # عدد مرات التأخر في الأقساط السابقة
     delay_days = np.array([np.random.randint(0, 30) if d > 0 else 0 for d in previous_delays])
     
     # حساب الميزات الإضافية (Feature Engineering)
     paid_ratio = paid / amount
     remaining_amount = amount - paid
     
-    # تحديد النتيجة المستهدفة (will_delay) بناءً على وزن منطقي مع إضافة بعض العشوائية (Noise)
-    # تزيد احتمالية التأخر إذا كانت نسبة المدفوع ضعيفة، أو التأخيرات السابقة كثيرة
+    # تحديد النتيجة المستهدفة (will_delay) - هل سيتأخر الطالب عن السداد هذا الترم؟
     score = (1.0 - paid_ratio) * 0.4 + (previous_delays / 5.0) * 0.4 + (delay_days / 30.0) * 0.2
     noise = np.random.normal(0, 0.1, n_samples)
     will_delay = np.where(score + noise > 0.5, 1, 0)
@@ -54,7 +54,7 @@ def setup_model_and_data():
     # تقسيم البيانات للتدريب والاختبار
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    # عمل تقييس للبيانات (Scaling) وهو أمر أساسي للـ Logistic Regression
+    # عمل تقييس للبيانات (Scaling)
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
@@ -74,28 +74,28 @@ model, scaler, accuracy, df, features_list = setup_model_and_data()
 
 # --- واجهة المستخدم (Streamlit UI) ---
 
-# رأس الصفحة
-st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>مساعد الشؤون المالية للتنبؤ بالمتأخرات 📊</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #555;'>نظام ذكي مبسط لمساعدة موظف المالية في التنبؤ باحتمالية تأخر العملاء عن السداد باستخدام الذكاء الاصطناعي.</p>", unsafe_allow_html=True)
+# رأس الصفحة (مخصص للكلية والرسوم الدراسية)
+st.markdown("<h1 style='text-align: center; color: #1E3A8A;'>نظام التنبؤ بمتأخرات الرسوم الدراسية للطلاب 🎓</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #555;'>نظام ذكي لمساعدة وحدة الشؤون المالية بالكلية في التنبؤ باحتمالية تأخر الطلاب عن سداد الرسوم الأكاديمية المتبقية.</p>", unsafe_allow_html=True)
 st.write("---")
 
 # الحقول المدخلة من قبل المستخدم
-st.subheader("📝 إدخال بيانات العميل")
+st.subheader("📝 إدخال البيانات المالية الحالية للطالب")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    amount_input = st.number_input("المبلغ الإجمالي المطلوب ($)", min_value=100, max_value=10000, value=2000, step=100)
-    paid_input = st.number_input("المبلغ المدفوع حتى الآن ($)", min_value=0, max_value=amount_input, value=800, step=50)
+    amount_input = st.number_input("إجمالي الرسوم الدراسية المقررة لهذا الترم ($)", min_value=500, max_value=10000, value=3000, step=100)
+    paid_input = st.number_input("المبلغ الذي سدده الطالب حتى الآن ($)", min_value=0, max_value=amount_input, value=1200, step=50)
 
 with col2:
-    prev_delays_input = st.slider("عدد مرات التأخر السابقة", min_value=0, max_value=5, value=1)
-    prev_delay_days_input = st.slider("مجموع أيام التأخر السابقة", min_value=0, max_value=30, value=5)
+    prev_delays_input = st.slider("عدد مرات تأخر الطالب في سداد الأقساط السابقة", min_value=0, max_value=5, value=1)
+    prev_delay_days_input = st.slider("متوسط أيام تأخير الطالب في السداد سابقاً", min_value=0, max_value=30, value=5)
 
 st.write("")
 
 # زر التنبؤ والتوقع
-if st.button("تحليل وتوقع النتيجة 🔍", use_container_width=True):
+if st.button("تحليل حالة الطالب وتوقع النتيجة 🔍", use_container_width=True):
     # 1. حساب الميزات الإضافية المدخلة
     p_ratio = paid_input / amount_input
     rem_amount = amount_input - paid_input
@@ -115,7 +115,7 @@ if st.button("تحليل وتوقع النتيجة 🔍", use_container_width=Tr
     
     # 4. التنبؤ بالنتيجة واحتماليتها
     prediction = model.predict(input_scaled)[0]
-    probabilities = model.predict_proba(input_scaled)[0] # يعيد مصفوفة [احتمال 0, احتمال 1]
+    probabilities = model.predict_proba(input_scaled)[0]
     
     delay_probability = probabilities[1] * 100
     commit_probability = probabilities[0] * 100
@@ -124,25 +124,25 @@ if st.button("تحليل وتوقع النتيجة 🔍", use_container_width=Tr
     st.subheader("🎯 نتيجة التنبؤ بالذكاء الاصطناعي")
     
     if prediction == 1:
-        st.warning("⚠️ **النتيجة المتوقعة:** العميل غالباً **سيتأخر** في السداد.")
-        st.metric(label="نسبة احتمال التأخر في السداد", value=f"{delay_probability:.1f}%")
-        st.info("💡 **توصية:** يفضل التواصل مع العميل بشكل استباقي لتأكيد موعد الدفع أو طلب ضمانات إضافية.")
+        st.warning("⚠️ **النتيجة المتوقعة:** الطالب معرض بنسبة كبيرة لـ **التأخر في سداد** باقي الرسوم.")
+        st.metric(label="احتمالية التعثر أو التأخر في السداد", value=f"{delay_probability:.1f}%")
+        st.info("💡 **الإجراء المقترح:** إرسال رسالة تذكيرية لطيف للطالب أو ولي أمره، أو إتاحة خطة أقساط مرنة لتفادي تعثره المالي الأكاديمي.")
     else:
-        st.success("✅ **النتيجة المتوقعة:** العميل غالباً **سيلتزم** بالسداد في الوقت المحدد.")
-        st.metric(label="نسبة احتمال الالتزام في السداد", value=f"{commit_probability:.1f}%")
-        st.info("💡 **توصية:** العميل يظهر مؤشرات التزام جيدة بناءً على سجله التاريخي ونسبة دفعه الحالية.")
+        st.success("✅ **النتيجة المتوقعة:** الطالب ملتزم وغالباً **سيسدد** باقي الرسوم في وقتها المحدد.")
+        st.metric(label="احتمالية الالتزام والاستكمال في الوقت", value=f"{commit_probability:.1f}%")
+        st.info("💡 **الإجراء المقترح:** لا يتطلب إجراء حالي، السجل المالي والأكاديمي للطالب يظهر استقراراً ممتازاً.")
 
 st.write("---")
 
 # قسم أكاديمي إضافي مفيد جداً للمناقشة مع المشرفين
-with st.expander("🛠️ تفاصيل تدريب النموذج والبيانات (مخصص للمناقشة والأستاذ)"):
-    st.write("هذا القسم مخصص لإظهار كيف يعمل الذكاء الاصطناعي في الخلفية:")
+with st.expander("🛠️ تفاصيل تدريب الخوارزمية والبيانات (مخصص للمناقشة والأستاذ)"):
+    st.write("هذا القسم يوضح آلية عمل النموذج للجنة المناقشة والأستاذ المشرف:")
     
     # عرض دقة النموذج المقياسة على بيانات الاختبار
     st.write(f"📈 **دقة النموذج الحالية (Accuracy):** `{accuracy * 100:.1f}%` (تم اختباره على بيانات غير مرئية)")
     st.write("⚙️ **الخوارزمية المستخدمة:** `Logistic Regression` (الانحدار اللوجستي للتصنيف الثنائي).")
     
     # عرض عينة من البيانات الاصطناعية التي تدرب عليها
-    st.write("📋 **عينة من البيانات الاصطناعية المستخدمة في تدريب النموذج (أول 5 أسطر):**")
+    st.write("📋 **عينة من البيانات الاصطناعية لسلوك سداد الطلاب (أول 5 أسطر):**")
     st.dataframe(df.head(5))
-    st.caption("ملاحظة: البيانات المولدة اصطناعية لغرض التدريب، ولكنها تتبع سلوكاً مالياً منطقياً.")
+    st.caption("ملاحظة: البيانات تحاكي سلوك سداد الرسوم الدراسية في الكليات وتم توليدها لغرض تدريب النموذج رياضياً.")
