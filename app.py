@@ -85,8 +85,9 @@ st.subheader("📝 إدخال البيانات المالية الحالية ل�
 col1, col2 = st.columns(2)
 
 with col1:
-    amount_input = st.number_input("إجمالي الرسوم الدراسية المقررة لهذا الترم ($)", min_value=500, max_value=10000, value=3000, step=100)
-    paid_input = st.number_input("المبلغ الذي سدده الطالب حتى الآن ($)", min_value=0, max_value=amount_input, value=1200, step=50)
+    amount_input = st.number_input("إجمالي الرسوم الدراسية المقررة لهذا الترم ($)", min_value=100, max_value=20000, value=3000, step=100)
+    # قمنا بإلغاء القيد الديناميكي هنا لمنع تعليق شاشة الجوال أثناء الكتابة
+    paid_input = st.number_input("المبلغ الذي سدده الطالب حتى الآن ($)", min_value=0, max_value=20000, value=1200, step=50)
 
 with col2:
     prev_delays_input = st.slider("عدد مرات تأخر الطالب في سداد الأقساط السابقة", min_value=0, max_value=5, value=1)
@@ -96,41 +97,45 @@ st.write("")
 
 # زر التنبؤ والتوقع
 if st.button("تحليل حالة الطالب وتوقع النتيجة 🔍", use_container_width=True):
-    # 1. حساب الميزات الإضافية المدخلة
-    p_ratio = paid_input / amount_input
-    rem_amount = amount_input - paid_input
-    
-    # 2. تجهيز البيانات كـ DataFrame لتطابق ميزات التدريب
-    input_data = pd.DataFrame([{
-        'amount': amount_input,
-        'paid': paid_input,
-        'previous_delays': prev_delays_input,
-        'delay_days': prev_delay_days_input,
-        'paid_ratio': p_ratio,
-        'remaining_amount': rem_amount
-    }])
-    
-    # 3. عمل تقييس للمدخلات باستخدام الـ Scaler المدرب سابقاً
-    input_scaled = scaler.transform(input_data[features_list])
-    
-    # 4. التنبؤ بالنتيجة واحتماليتها
-    prediction = model.predict(input_scaled)[0]
-    probabilities = model.predict_proba(input_scaled)[0]
-    
-    delay_probability = probabilities[1] * 100
-    commit_probability = probabilities[0] * 100
-    
-    st.write("---")
-    st.subheader("🎯 نتيجة التنبؤ بالذكاء الاصطناعي")
-    
-    if prediction == 1:
-        st.warning("⚠️ **النتيجة المتوقعة:** الطالب معرض بنسبة كبيرة لـ **التأخر في سداد** باقي الرسوم.")
-        st.metric(label="احتمالية التعثر أو التأخر في السداد", value=f"{delay_probability:.1f}%")
-        st.info("💡 **الإجراء المقترح:** إرسال رسالة تذكيرية لطيف للطالب أو ولي أمره، أو إتاحة خطة أقساط مرنة لتفادي تعثره المالي الأكاديمي.")
+    # التحقق من منطقية المدخلات لمنع الأخطاء الرياضية
+    if paid_input > amount_input:
+        st.error("❌ خطأ: لا يمكن أن يكون المبلغ المسدد أكبر من إجمالي الرسوم الدراسية المقررة للطالب! يرجى مراجعة الأرقام المدخلة.")
     else:
-        st.success("✅ **النتيجة المتوقعة:** الطالب ملتزم وغالباً **سيسدد** باقي الرسوم في وقتها المحدد.")
-        st.metric(label="احتمالية الالتزام والاستكمال في الوقت", value=f"{commit_probability:.1f}%")
-        st.info("💡 **الإجراء المقترح:** لا يتطلب إجراء حالي، السجل المالي والأكاديمي للطالب يظهر استقراراً ممتازاً.")
+        # 1. حساب الميزات الإضافية المدخلة
+        p_ratio = paid_input / amount_input
+        rem_amount = amount_input - paid_input
+        
+        # 2. تجهيز البيانات كـ DataFrame لتطابق ميزات التدريب
+        input_data = pd.DataFrame([{
+            'amount': amount_input,
+            'paid': paid_input,
+            'previous_delays': prev_delays_input,
+            'delay_days': prev_delay_days_input,
+            'paid_ratio': p_ratio,
+            'remaining_amount': rem_amount
+        }])
+        
+        # 3. عمل تقييس للمدخلات باستخدام الـ Scaler المدرب سابقاً
+        input_scaled = scaler.transform(input_data[features_list])
+        
+        # 4. التنبؤ بالنتيجة واحتماليتها
+        prediction = model.predict(input_scaled)[0]
+        probabilities = model.predict_proba(input_scaled)[0]
+        
+        delay_probability = probabilities[1] * 100
+        commit_probability = probabilities[0] * 100
+        
+        st.write("---")
+        st.subheader("🎯 نتيجة التنبؤ بالذكاء الاصطناعي")
+        
+        if prediction == 1:
+            st.warning("⚠️ **النتيجة المتوقعة:** الطالب معرض بنسبة كبيرة لـ **التأخر في سداد** باقي الرسوم.")
+            st.metric(label="احتمالية التعثر أو التأخر في السداد", value=f"{delay_probability:.1f}%")
+            st.info("💡 **الإجراء المقترح:** إرسال رسالة تذكيرية لطيفة للطالب أو ولي أمره، أو إتاحة خطة أقساط مرنة لتفادي تعثره المالي الأكاديمي.")
+        else:
+            st.success("✅ **النتيجة المتوقعة:** الطالب ملتزم وغالباً **سيسدد** باقي الرسوم في وقتها المحدد.")
+            st.metric(label="احتمالية الالتزام والاستكمال في الوقت", value=f"{commit_probability:.1f}%")
+            st.info("💡 **الإجراء المقترح:** لا يتطلب إجراء حالي، السجل المالي والأكاديمي للطالب يظهر استقراراً ممتازاً.")
 
 st.write("---")
 
